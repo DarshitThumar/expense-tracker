@@ -1,0 +1,100 @@
+import React, { createContext, useReducer, useEffect } from 'react';
+import AppReducer from './AppReducer';
+import api from '../utils/axios';
+
+// Initial state
+const initialState = {
+  transactions: [],
+  error: null,
+  loading: true,
+};
+
+// Create context
+export const GlobalContext = createContext(initialState);
+
+// Provider component
+export const GlobalProvider = ({ children }) => {
+  const [state, dispatch] = useReducer(AppReducer, initialState);
+
+  // Actions
+  async function getTransactions() {
+    try {
+      const res = await api.get('/api/transactions');
+      dispatch({
+        type: 'GET_TRANSACTIONS',
+        payload: res.data.data,
+      });
+    } catch (err) {
+      dispatch({
+        type: 'TRANSACTION_ERROR',
+        payload: err.response?.data?.error || 'Could not fetch transactions',
+      });
+    }
+  }
+
+  async function addTransaction(transaction) {
+    try {
+      const res = await api.post('/api/transactions', transaction);
+      dispatch({
+        type: 'ADD_TRANSACTION',
+        payload: res.data.data,
+      });
+    } catch (err) {
+      dispatch({
+        type: 'TRANSACTION_ERROR',
+        payload: err.response?.data?.error || 'Could not add transaction',
+      });
+    }
+  }
+
+  async function updateTransaction(id, transaction) {
+    try {
+        const res = await api.put(`/api/transactions/${id}`, transaction);
+        dispatch({
+            type: 'UPDATE_TRANSACTION',
+            payload: res.data.data,
+        });
+    } catch (err) {
+        dispatch({
+            type: 'TRANSACTION_ERROR',
+            payload: err.response?.data?.error || 'Could not update transaction',
+        });
+    }
+  }
+
+  async function deleteTransaction(id) {
+    try {
+      await api.delete(`/api/transactions/${id}`);
+      dispatch({
+        type: 'DELETE_TRANSACTION',
+        payload: id,
+      });
+    } catch (err) {
+      dispatch({
+        type: 'TRANSACTION_ERROR',
+        payload: err.response?.data?.error || 'Could not delete transaction',
+      });
+    }
+  }
+
+  // Fetch transactions on initial load
+  useEffect(() => {
+    getTransactions();
+  }, []);
+
+  return (
+    <GlobalContext.Provider
+      value={{
+        transactions: state.transactions,
+        error: state.error,
+        loading: state.loading,
+        getTransactions,
+        addTransaction,
+        updateTransaction,
+        deleteTransaction,
+      }}
+    >
+      {children}
+    </GlobalContext.Provider>
+  );
+};
